@@ -1,0 +1,1 @@
+read Ultralytics for a simple 2D detection task, we provide MIP generation script

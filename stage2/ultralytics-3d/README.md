@@ -1,0 +1,1 @@
+run `train_seg.py` and be careful with GPU memory usage.
