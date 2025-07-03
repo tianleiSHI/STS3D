@@ -505,7 +505,7 @@ if __name__ == '__main__':
         pretrained_state_dict = torch.load(cfg.LOAD_FROM, map_location='cpu')['state_dict']
 
         import torch
-        from ultralytics.yolo.utils.torch_utils import intersect_dicts
+        from ultralytics.yolo.utils.torch_utils import intersect_dicts # 智能合并权重字典，只合并相同形状的权重
 
         intersect_state_dict = {}
         for k, v in net.state_dict().items():
@@ -520,39 +520,42 @@ if __name__ == '__main__':
         net.load_state_dict(state_dict, strict=False)
 
     print(cfg.get_snapshot())
+    # 创建TensorBoard日志记录器
     tb_logger = pytorch_lightning.loggers.TensorBoardLogger(
-        save_dir=cfg.WEIGHT_DIR,
-        name=cfg.NAME,
-        flush_secs=1,
-        version=cfg.VERSION
+        save_dir=cfg.WEIGHT_DIR, # 日志保存路径
+        name=cfg.NAME, # 实验名称
+        flush_secs=1, # 每秒刷新日志
+        version=cfg.VERSION # 版本号
     )
-
+    # 模型检查点回调，保存最佳模型
     checkpoint_callback = ModelCheckpoint(
         dirpath=tb_logger.log_dir + '/checkpoints',
-        filename='{epoch:03d}-{val_loss:.4f}-{val_dice:.4f}',
-        save_top_k=4,
-        monitor='val_loss',
-        mode='min',
-        save_last=True,
+        filename='{epoch:03d}-{val_loss:.4f}-{val_dice:.4f}', # (epoch-验证损失-验证dice)
+        save_top_k=4, # 保存前4个最佳模型
+        monitor='val_loss', # 监控验证损失
+        mode='min', # 最小化验证损失
+        save_last=True, # 保存最后一个模型
     )
 
     # initialise Lightning's trainer.
+    # 训练器配置
     trainer = pytorch_lightning.Trainer(
         # strategy='ddp_spawn',
-        strategy="ddp_find_unused_parameters_false",
-        accelerator='gpu',
-        devices=1,
-        max_epochs=cfg.EPOCHS,
-        logger=tb_logger,
-        callbacks=[checkpoint_callback],
-        sync_batchnorm=True,
-        num_sanity_val_steps=2,
-        log_every_n_steps=10,
-        check_val_every_n_epoch=1,
-        precision=16,
+        strategy="ddp_find_unused_parameters_false", # 分布式训练策略
+        accelerator='gpu', # 加速器
+        devices=1, # 使用1个GPU
+        max_epochs=cfg.EPOCHS, # 最大训练轮数
+        logger=tb_logger, # 日志记录器
+        callbacks=[checkpoint_callback], # 回调函数列表
+        sync_batchnorm=True, # 同步批归一化
+        num_sanity_val_steps=2, # 训练前验证步数
+        log_every_n_steps=10, # 每10步记录一次日志
+        check_val_every_n_epoch=1, # 每1个epoch验证一次
+        precision=16, # 使用混合精度训练（FP16 半精度浮点数）
     )
 
     # train
+    # 开始训练
     trainer.fit(net,
                 ckpt_path=cfg.LOAD_FROM
                 )
